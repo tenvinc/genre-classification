@@ -2,7 +2,6 @@ from __future__ import print_function
 from audio_processing import create_mel_ndarray
 import numpy as np
 import os
-import pandas as pd
 
 # Default sampling parameters
 sampling_period = 30.0
@@ -23,8 +22,8 @@ SPLIT_RATIO = (0.6, 0.2, 0.2)
 MAX_EXAMPLES = 1000
 
 # Default data storage names
-x_csv = ('trainX.csv', 'valX.csv', 'testX.csv')
-y_csv = ('trainY.csv', 'valY.csv', 'testY.csv')
+x_npy = ('trainX.npy', 'valX.npy', 'testX.npy')
+y_npy = ('trainY.npy', 'valY.npy', 'testY.npy')
 
 
 def prepare_dataset(path):
@@ -43,7 +42,7 @@ def create_dataset(search_path):
     dataset_y = []
     count = 0
     for dirpath, dirnames, filenames in os.walk(search_path):
-        for filename in filenames:
+        for filename in filenames[:1]:
             X = create_X(os.path.join(dirpath, filename), count)
             y_value = os.path.basename(dirpath)
             Y = create_Y(y_value)
@@ -52,9 +51,7 @@ def create_dataset(search_path):
             count += 1
             print('.', end='')
         print(' {}%'.format((count / MAX_EXAMPLES) * 100))
-    dataset_x = np.vstack(dataset_x)
-    dataset_y = np.vstack(dataset_y)
-    return dataset_x, dataset_y
+    return np.array(dataset_x), np.array(dataset_y)
 
 
 def split_dataset(ratios, X, Y, total):
@@ -74,38 +71,31 @@ def split_dataset(ratios, X, Y, total):
 def save_dataset(x_split, y_split):
     i = 0
     while i < len(x_split):
-        df = pd.DataFrame(x_split[i])
-        df.to_csv(x_csv[i])
-        print('saving to {}'.format(x_csv[i]))
+        np.save(file=x_npy[i], arr=x_split[i])
+        print('x = {}'.format(x_split[i].shape))
+        print('saving to {}'.format(x_npy[i]))
         i += 1
     j = 0
     while j < len(y_split):
-        df = pd.DataFrame(y_split[j])
-        df.to_csv(y_csv[j])
-        print('saving to {}'.format(y_csv[j]))
+        np.save(file=y_npy[j], arr=y_split[j])
+        print('y = {}'.format(y_split[j].shape))
+        print('saving to {}'.format(y_npy[j]))
         j += 1
 
 
 # Reads in the datasets from csv files, ignoring the first row and first col of the data
 def read_dataset():
-    dfx_train = pd.read_csv(x_csv[0], index_col=0)
-    x_train = __reshape(dfx_train.values, rows=int(image_size), cols=int(image_size))
-    dfx_val = pd.read_csv(x_csv[1], index_col=0)
-    x_val = __reshape(dfx_val.values, rows=int(image_size), cols=int(image_size))
-    dfx_test = pd.read_csv(x_csv[2], index_col=0)
-    x_test = __reshape(dfx_test.values, rows=int(image_size), cols=int(image_size))
-    dfy_train = pd.read_csv(y_csv[0], index_col=0)
-    y_train = dfy_train.values
-    dfy_val = pd.read_csv(y_csv[1], index_col=0)
-    y_val = dfy_val.values
-    dfy_test = pd.read_csv(y_csv[2], index_col=0)
-    y_test = dfy_test.values
+    x_train = np.load(x_npy[0])
+    x_val = np.load(x_npy[1])
+    x_test = np.load(x_npy[2])
+    y_train = np.load(y_npy[0])
+    y_val = np.load(y_npy[1])
+    y_test = np.load(y_npy[2])
     return x_train, x_val, x_test, y_train, y_val, y_test
 
 
 def create_X(filepath, count):
     feature = create_mel_ndarray(filepath, count)
-    feature = np.ravel(feature)
     return feature
 
 
