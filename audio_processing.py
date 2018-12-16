@@ -1,51 +1,63 @@
 from __future__ import print_function
+import librosa as lbr
 import librosa.display
 import numpy as np
-import librosa.display
 import matplotlib.pyplot as plt
+import os
 
 # This module contains functions to process audio data into spectograms and returns a numpy array of values for the
 # dataset
 
-# Default image parameters
-dpi = 100.0
+# Default image parameters to make figure size easy to set
+dpi = 256.0
+DEFAULT_FIG_SIZE = (1, 1)
+
+# Audio input parameters
+SAMPLING_RATE = 44100  # in Hz
+DURATION = 10.0 # in seconds
+OFFSET = 5.0 # in seconds
+
+# Mel spectogram characteristic params
+MAX_FREQ = 8000
+WINDOW_SIZE = 2048
+WINDOW_STRIDE = WINDOW_SIZE // 2
+N_MEL = 128
 
 
-# Returns Short-time Fourier Transform of the file given a path, sampling rate, offset and duration of sample
-def compute_STFT(path, sr, sample_duration, n_fft=2048, offset=None):
-    total_duration = librosa.get_duration(filename=path)
-    if offset is None:
-        offset = total_duration / 2
-    if (offset + sample_duration) > total_duration:
-        print("Error. Duration of audio is too little")
-        exit(1)
-    y, sr = librosa.load(path=path, sr=sr)
-    data = librosa.amplitude_to_db(np.abs(librosa.stft(y=y)), ref=np.max)
-    return data
+def create_mel_ndarray(path, index):
+    mel_matrix = compute_mel(path)
+    fig = draw_melspectogram(mel_matrix, DEFAULT_FIG_SIZE)
+    return convert_mel_to_nparray2d(fig, index)
 
 
-# Creates a numpy array of pixel values from a greyscaled spectogram
-def create_grey_spectogram(data, sampling_rate,  image_size, win_length=2048):
-    fig = __plot_grey_spectogram(data, sampling_rate, image_size, win_length)
-    rgb_data = __convert_to_numpy(fig)
+# Returns Short-time Fourier Transform of an audio file in terms of mel scale
+def compute_mel(path):
+    y, sr = lbr.load(path=path, sr=SAMPLING_RATE, mono=True, duration=DURATION, offset=OFFSET)
+    mel_matrix = lbr.feature.melspectrogram(y=y, sr=SAMPLING_RATE,
+                                            n_fft=WINDOW_SIZE, hop_length=WINDOW_STRIDE,
+                                            fmax=MAX_FREQ)
+    return mel_matrix
+
+
+def draw_melspectogram(mel_matrix, fig_shape):
+    fig = plt.figure(figsize=fig_shape, dpi=dpi)
+    plt.axes([0., 0., 1., 1.], frameon=False, xticks=[], yticks=[])  # hide axes
+    lbr.display.specshow(lbr.power_to_db(mel_matrix, ref=np.max),
+                         y_axis='mel', fmax=MAX_FREQ,
+                         x_axis='time', cmap='gray')
+    return fig
+
+
+def convert_mel_to_nparray2d(fig, index):
+    rgb_data = __convert_to_numpy(fig, index)
     greyscale_data = __rgb2gray(rgb_data)
     return greyscale_data
 
 
-def __plot_grey_spectogram(data, sampling_rate, image_size, win_length):
-    fig = plt.figure(figsize=(image_size/dpi, image_size/dpi), dpi=dpi)
-    plt.axes([0., 0., 1., 1.], frameon=False, xticks=[], yticks=[])  # hide axes
-    librosa.display.specshow(data, sr=sampling_rate, x_axis='off', y_axis='log',
-                             hop_length=win_length/4)
-    # Currently requires saving before figure is saved. TODO: change this in the future
-    plt.savefig('demo.png', bbox_inches=None, pad_inches=0)
-    plt.close()
-    return fig
-
-
-def __convert_to_numpy(fig):
-    np_data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    np_data = np_data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+def __convert_to_numpy(fig, index):
+    fig.savefig(os.path.join('images', 'temp{}.png'.format(index)))
+    plt.close('all')
+    np_data = np.array(fig.canvas.renderer._renderer)
     return np_data
 
 
@@ -61,3 +73,26 @@ def display_spectogram(data, sampling_rate, title, win_length=2048):
     plt.title(title)
     plt.show()
     plt.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

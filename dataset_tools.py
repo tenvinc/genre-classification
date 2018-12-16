@@ -1,7 +1,5 @@
 from __future__ import print_function
-from audio_processing import compute_STFT
-from audio_processing import create_grey_spectogram
-from audio_processing import display_spectogram
+from audio_processing import create_mel_ndarray
 import numpy as np
 import os
 import pandas as pd
@@ -11,17 +9,18 @@ sampling_period = 30.0
 sampling_rate = 44100      # in Hz
 
 # Default spectogram parameters
-image_size = 200.0
+image_size = 256.0
 
 # Default folder parameters
-folder = 'dataset'
+FOLDER_NAME = 'dataset'
 
 # Dataset class range
-genre = np.asarray(['blues', 'classical', 'country', 'disco', 'hiphop', 'jazz', 'metal',
+GENRE = np.asarray(['blues', 'classical', 'country', 'disco', 'hiphop', 'jazz', 'metal',
                     'pop', 'reggae', 'rock'])
 
 # Default train:val:test ratio which adds up to 1
-split_ratio = (0.6, 0.2, 0.2)
+SPLIT_RATIO = (0.6, 0.2, 0.2)
+MAX_EXAMPLES = 1000
 
 # Default data storage names
 x_csv = ('trainX.csv', 'valX.csv', 'testX.csv')
@@ -29,12 +28,12 @@ y_csv = ('trainY.csv', 'valY.csv', 'testY.csv')
 
 
 def prepare_dataset(path):
-    search_path = os.path.join(path, folder)
+    search_path = os.path.join(path, FOLDER_NAME)
     print('============ Attempting to start the conversion...')
     x_combined, y_combined = create_dataset(search_path)
     print('============ Finished. Attempting to split dataset...')
-    x_split, y_split = split_dataset(ratios=split_ratio, X=x_combined, Y=y_combined,
-                                                                   total=x_combined.shape[0])
+    x_split, y_split = split_dataset(ratios=SPLIT_RATIO, X=x_combined, Y=y_combined,
+                                     total=x_combined.shape[0])
     print('============ Finished. Attempting to save dataset to disk...')
     save_dataset(x_split, y_split)
 
@@ -45,28 +44,30 @@ def create_dataset(search_path):
     count = 0
     for dirpath, dirnames, filenames in os.walk(search_path):
         for filename in filenames:
-            X = create_X(os.path.join(dirpath, filename))
+            X = create_X(os.path.join(dirpath, filename), count)
             y_value = os.path.basename(dirpath)
             Y = create_Y(y_value)
             dataset_x.append(X)
             dataset_y.append(Y)
             count += 1
             print('.', end='')
-        print(' {}%'.format((count / 1000.0) * 100))
+        print(' {}%'.format((count / MAX_EXAMPLES) * 100))
     dataset_x = np.vstack(dataset_x)
     dataset_y = np.vstack(dataset_y)
     return dataset_x, dataset_y
 
 
 def split_dataset(ratios, X, Y, total):
+    num_example = X.shape[0]
+    random_indices = np.random.permutation(num_example)
     x = []
     y = []
     end = 0
     for ratio in ratios:
         start = end
         end = start + int(ratio * total)
-        x.append(X[start:end])
-        y.append(Y[start:end])
+        x.append(X[random_indices[start:end]])
+        y.append(Y[random_indices[start:end]])
     return x, y
 
 
@@ -102,16 +103,14 @@ def read_dataset():
     return x_train, x_val, x_test, y_train, y_val, y_test
 
 
-def create_X(filepath):
-    stft_data = compute_STFT(filepath, sr=sampling_rate, sample_duration=sampling_period, offset=0)
-    display_spectogram(data=stft_data, sampling_rate=sampling_rate, title=filepath)
-    data = create_grey_spectogram(data=stft_data,sampling_rate=sampling_rate, image_size=image_size)
-    #data = np.ravel(data)
-    return data
+def create_X(filepath, count):
+    feature = create_mel_ndarray(filepath, count)
+    feature = np.ravel(feature)
+    return feature
 
 
 def create_Y(y_value):
-    return genre == y_value
+    return GENRE == y_value
 
 
 def __reshape(matrix, rows, cols, blocks=-1, depth=1):
