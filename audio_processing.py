@@ -1,9 +1,13 @@
 from __future__ import print_function
+
+import os
+
 import librosa as lbr
 import librosa.display
-import numpy as np
 import matplotlib.pyplot as plt
-import os
+import numpy as np
+
+import logs_centre
 
 # This module contains functions to process audio data into spectograms and returns a numpy array of values for the
 # dataset
@@ -23,11 +27,16 @@ WINDOW_SIZE = 2048
 WINDOW_STRIDE = WINDOW_SIZE // 2
 N_MEL = 128
 
+logger = logs_centre.get_logger(__name__)
+
 
 def create_mel_ndarray(path, index):
+    logger.info('Attempting to create mel spectogram ndarray')
     mel_matrix = compute_mel(path)
     fig = draw_melspectogram(mel_matrix, DEFAULT_FIG_SIZE)
-    return convert_mel_to_nparray2d(fig, index)
+    result = convert_mel_to_nparray2d(fig, index)
+    logger.info('Finished creation of mel spectogram ndarray')
+    return result
 
 
 # Returns Short-time Fourier Transform of an audio file in terms of mel scale
@@ -56,8 +65,8 @@ def convert_mel_to_nparray2d(fig, index):
 
 def __convert_to_numpy(fig, index):
     fig.savefig(os.path.join('images', 'temp{}.png'.format(index)))
-    plt.close('all')
     np_data = np.array(fig.canvas.renderer._renderer)
+    plt.close('all')
     return np_data
 
 

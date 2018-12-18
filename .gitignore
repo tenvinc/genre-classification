@@ -1,2 +1,5 @@
 dataset/
 *.csv
+*.png
+*.npy
+raw_data/

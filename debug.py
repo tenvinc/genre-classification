@@ -1,24 +1,14 @@
 # Beat tracking example
 from __future__ import print_function
 
-from audio_processing import compute_mel
-
-from dataset_tools import prepare_dataset
-from dataset_tools import read_dataset
-
-from learning_model import setup_tensorflow
-from learning_model import create_model
-from learning_model import train_model
-from learning_model import SpectogramSequence as ss
-from learning_model import preprocess_data
-
-import numpy as np
+import os
 
 import librosa as lbr
 import librosa.display
-import os
-
 import matplotlib.pyplot as plt
+import numpy as np
+
+from audio_processing import compute_mel
 
 # Mel spectogram characteristic params
 MAX_FREQ = 8000
